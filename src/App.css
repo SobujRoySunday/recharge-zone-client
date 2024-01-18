@@ -19,10 +19,31 @@ main {
   transform: translateX(200%);
 }
 
+#batteryStatus {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  margin-left: 25rem;
+}
+
 #chargeInfo {
   position: absolute;
   bottom: 10px;
   left: 10px;
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+#charging-time {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
   background-color: #fff;
   padding: 10px;
   border-radius: 5px;

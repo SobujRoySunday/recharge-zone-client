@@ -11,6 +11,9 @@ const MapView = () => {
   const [evStations, setEvStations] = useState([]);
   const energyConsumptionRate = 0.2;
   const [chargeConsumption, setChargeConsumption] = useState(0);
+  const [batteryLevel, setBatteryLevel] = useState(30);
+  const geolocate = useRef();
+  const [chargingTime, setChargingTime] = useState("");
 
   function calculateConsumption(start, destination) {
     const distance = calculateDistance(start, destination);
@@ -90,13 +93,13 @@ const MapView = () => {
     // Adding necessary controls
     map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
     // Geolocation control
-    const geolocate = new mapboxgl.GeolocateControl({
+    geolocate.current = new mapboxgl.GeolocateControl({
       positionOptions: {
         enableHighAccuracy: true,
       },
       trackUserLocation: true,
     });
-    map.current.addControl(geolocate);
+    map.current.addControl(geolocate.current);
     // Directions Control
     const directions = new MapboxDirections({
       accessToken: mapboxgl.accessToken,
@@ -106,7 +109,7 @@ const MapView = () => {
     map.current.addControl(directions, "top-left");
 
     // on geolocate event handler
-    geolocate.on("geolocate", (event) => {
+    geolocate.current.on("geolocate", (event) => {
       const userLocation = [event.coords.longitude, event.coords.latitude];
       fetchEVStations(userLocation);
       directions.setOrigin(userLocation);
@@ -114,13 +117,51 @@ const MapView = () => {
 
     // on map load event handler
     map.current.on("load", () => {
-      geolocate.trigger();
+      geolocate.current.trigger();
+    });
+
+    // battery status
+    navigator.getBattery().then((battery) => {
+      function updateBatteryState() {
+        setBatteryLevel(battery.level * 100);
+        if (battery.charging) {
+          setChargingTime("Charging...");
+        } else {
+          if (parseInt(battery.dischargingTime)) {
+            let hr = parseInt(battery.dischargingTime / 3600);
+            let min = parseInt(battery.dischargingTime / 60 - hr * 60);
+            setChargingTime(`${hr}hr ${min}mins remaining`);
+          } else {
+            setChargingTime(battery.dischargingTime);
+          }
+        }
+      }
+
+      updateBatteryState();
+      console.log(battery);
+
+      battery.addEventListener("chargingchange", () => {
+        updateBatteryState();
+      });
+
+      battery.addEventListener("levelchange", () => {
+        updateBatteryState();
+      });
     });
   });
+
+  useEffect(() => {
+    if (batteryLevel < 30) {
+      geolocate.current.trigger();
+    }
+  }, [batteryLevel]);
 
   return (
     <main>
       <div id="map"></div>
+      <div id="batteryStatus">
+        Battery Status: <span id="batteryPercentage">{batteryLevel}</span>
+      </div>
       <div id="destinationSelector">
         <label htmlFor="destination">EV Charging Station:</label>
         <select id="destination" defaultValue="">
@@ -140,6 +181,7 @@ const MapView = () => {
         Estimated Charge Consumption:{" "}
         <span id="chargeConsumption">{chargeConsumption}</span> kWh
       </div>
+      <div id="charging-time">{chargingTime}</div>
     </main>
   );
 };
