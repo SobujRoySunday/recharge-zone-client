@@ -6,7 +6,7 @@ The adoption of electric vehicles (EVs) faces significant challenges, including 
 
 - Interactive maps
 - Navigation system
-- Battery status detector(Percentage, Battery life time)
 - List of nearby EV charging stations
+- Battery status detector(Percentage, Battery life time)
 - Routing to EV Charging stations
 - Emergency Assistance

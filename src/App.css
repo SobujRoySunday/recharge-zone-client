@@ -7,3 +7,24 @@ main {
 #map {
   height: 100%;
 }
+
+#destinationSelector {
+  position: absolute;
+  top: 10px;
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  width: fit-content;
+  transform: translateX(200%);
+}
+
+#chargeInfo {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
