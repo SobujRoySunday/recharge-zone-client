@@ -14,7 +14,73 @@ const MapView = () => {
   const [batteryLevel, setBatteryLevel] = useState(30);
   const geolocate = useRef();
   const directions = useRef();
+  const socket = useRef();
   const [chargingTime, setChargingTime] = useState("");
+  const [messageElement, setMessageElement] = useState("");
+
+  function emergencyCall() {
+    // Get the user's current location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const emergencyMessage = "Emergency! Please check the situation.";
+
+          // Create an object with text and location
+          const messageObject = {
+            text: emergencyMessage,
+            location: `Lat: ${position.coords.latitude}, Lng: ${position.coords.longitude}`,
+          };
+
+          // Send the message object to the server
+          socket.current.send(JSON.stringify(messageObject));
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+        }
+      );
+    } else {
+      console.error("Geolocation is not supported in this browser.");
+    }
+  }
+
+  useEffect(() => {
+    try {
+      socket.current = new WebSocket(process.env.REACT_APP_BACKEND_API);
+
+      socket.current.addEventListener("open", (event) => {
+        console.log("WebSocket connection opened:", event);
+      });
+
+      socket.current.addEventListener("message", (event) => {
+        console.log("Message from server:", event.data);
+
+        // Parse the message as JSON
+        try {
+          const messageData = JSON.parse(event.data);
+
+          setMessageElement(
+            `Message: ${messageData.text}, Location: ${messageData.location}`
+          );
+
+          setTimeout(() => {
+            setMessageElement("");
+          }, 300000);
+        } catch (error) {
+          console.error("Error parsing message:", error);
+        }
+      });
+
+      socket.current.addEventListener("error", (error) => {
+        console.error("WebSocket error:", error);
+      });
+
+      socket.current.addEventListener("close", (event) => {
+        console.log("WebSocket connection closed:", event);
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  });
 
   function calculateConsumption(start, destination) {
     const distance = calculateDistance(start, destination);
@@ -199,6 +265,18 @@ const MapView = () => {
         <span id="chargeConsumption">{chargeConsumption}</span> kWh
       </div>
       <div id="charging-time">{chargingTime}</div>
+      <button
+        onClick={emergencyCall}
+        id="emergencyButton"
+        className="my-custom-selector"
+      >
+        Emergency Signal
+      </button>
+      {messageElement === "" ? null : (
+        <div id="messageContainer" className="my-custom-selector">
+          {messageElement}
+        </div>
+      )}
     </main>
   );
 };

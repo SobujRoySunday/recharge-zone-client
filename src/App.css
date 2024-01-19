@@ -49,3 +49,30 @@ main {
   border-radius: 5px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
+
+#emergencyButton {
+  position: absolute;
+  bottom: 10px;
+  left: 54rem;
+  z-index: 10;
+  background-color: #ef4444;
+  border-radius: 0.125rem;
+  color: #ffffff;
+  padding: 10px;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.my-custom-selector {
+  position: absolute;
+  bottom: 50px;
+  left: 40rem;
+  z-index: 10;
+  background-color: #ef4444;
+  border-radius: 0.125rem;
+  color: #ffffff;
+  padding: 10px;
+  border: 0;
+  border-radius: 10px;
+}
