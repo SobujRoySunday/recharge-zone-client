@@ -3,6 +3,9 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import MapboxDirections from "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.js";
 import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css";
+import axios from "axios";
+import getUserLocation from "../lib/getUserLocation";
+import calculateDistance from "../lib/calculateDistance";
 
 mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN;
 
@@ -11,7 +14,7 @@ const MapView = () => {
   const [evStations, setEvStations] = useState([]);
   const energyConsumptionRate = 0.2;
   const [chargeConsumption, setChargeConsumption] = useState(0);
-  const [batteryLevel, setBatteryLevel] = useState(30);
+  const [batteryLevel, setBatteryLevel] = useState(100);
   const geolocate = useRef();
   const directions = useRef();
   const socket = useRef();
@@ -19,31 +22,6 @@ const MapView = () => {
   const [messageElement, setMessageElement] = useState("");
 
   function emergencyCall() {
-    // Get the user's current location
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const emergencyMessage = "Emergency! Please check the situation.";
-
-          // Create an object with text and location
-          const messageObject = {
-            text: emergencyMessage,
-            location: `Lat: ${position.coords.latitude}, Lng: ${position.coords.longitude}`,
-          };
-
-          // Send the message object to the server
-          socket.current.send(JSON.stringify(messageObject));
-        },
-        (error) => {
-          console.error("Error getting location:", error);
-        }
-      );
-    } else {
-      console.error("Geolocation is not supported in this browser.");
-    }
-  }
-
-  useEffect(() => {
     try {
       socket.current = new WebSocket(process.env.REACT_APP_BACKEND_API);
 
@@ -80,70 +58,25 @@ const MapView = () => {
     } catch (error) {
       console.error(error);
     }
-  });
+
+    const emergencyMessage = "Emergency! Please check the situation.";
+
+    // Create an object with text and location
+    const messageObject = {
+      text: emergencyMessage,
+      location: `Lat: ${getUserLocation()[0]}, Lng: ${getUserLocation()[1]}`,
+    };
+
+    // Send the message object to the server
+    socket.current.send(JSON.stringify(messageObject));
+    socket.current.close();
+  }
 
   function calculateConsumption(start, destination) {
     const distance = calculateDistance(start, destination);
     const consumption = distance * energyConsumptionRate;
     setChargeConsumption(consumption.toFixed(2));
     console.log(`chargeConsumption: ${consumption.toFixed(2)}`);
-  }
-
-  function calculateDistance(point1, point2) {
-    const toRadians = (angle) => angle * (Math.PI / 180);
-
-    const lat1 = point1[1];
-    const lon1 = point1[0];
-    const lat2 = point2[1];
-    const lon2 = point2[0];
-
-    const R = 6371; // Earth radius in kilometers
-
-    const dLat = toRadians(lat2 - lat1);
-    const dLon = toRadians(lon2 - lon1);
-
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRadians(lat1)) *
-        Math.cos(toRadians(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    const distance = R * c; // Distance in kilometers
-
-    return distance;
-  }
-
-  function fetchEVStations(userLocation) {
-    const keyword = "EV Station";
-    fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${keyword}.json?proximity=${userLocation[0]},${userLocation[1]}&access_token=${mapboxgl.accessToken}`
-    )
-      .then((response) => response.json())
-      .then((data) => {
-        const evStationsLocal = data.features.map((feature) => ({
-          name: feature.text,
-          coordinates: feature.center,
-        }));
-        setEvStations(evStationsLocal);
-
-        evStationsLocal.forEach((station) => {
-          const marker = new mapboxgl.Marker()
-            .setLngLat(station.coordinates)
-            .setPopup(new mapboxgl.Popup().setText(station.name))
-            .addTo(map.current);
-
-          // Attach click event to the marker
-          marker
-            .getElement()
-            .addEventListener("click", () =>
-              calculateConsumption(userLocation, station.coordinates)
-            );
-        });
-      })
-      .catch((error) => console.error("Error fetching EV stations:", error));
   }
 
   useEffect(() => {
@@ -178,13 +111,7 @@ const MapView = () => {
     // on geolocate event handler
     geolocate.current.on("geolocate", (event) => {
       const userLocation = [event.coords.longitude, event.coords.latitude];
-      fetchEVStations(userLocation);
       directions.current.setOrigin(userLocation);
-    });
-
-    // on map load event handler
-    map.current.on("load", () => {
-      geolocate.current.trigger();
     });
 
     // battery status
@@ -222,8 +149,9 @@ const MapView = () => {
   });
 
   useEffect(() => {
-    if (batteryLevel < 30) {
+    if (batteryLevel < 59) {
       geolocate.current.trigger();
+      fetchEV();
     }
   }, [batteryLevel]);
 
@@ -233,6 +161,56 @@ const MapView = () => {
     if (selectedDestination) {
       const destinationCoordinates = JSON.parse(selectedDestination);
       directions.current.setDestination(destinationCoordinates);
+    }
+  }
+
+  async function fetchEV() {
+    const userLocation = await getUserLocation();
+    if (!userLocation) {
+      throw new Error("cant get user loc");
+    }
+    try {
+      const response = await axios.get(
+        `${process.env.REACT_APP_BACKEND_HTTP}/stations`
+      );
+      if (response) {
+        const evStationsLocal = response.data.chargingStations;
+        setEvStations(evStationsLocal);
+
+        let minDistance = Number.MAX_SAFE_INTEGER;
+        let minIndex = -1;
+
+        for (let i = 0; i < evStationsLocal.length; i++) {
+          const distance = calculateDistance(
+            userLocation,
+            evStationsLocal[i].position
+          );
+          if (minDistance > distance) {
+            minDistance = distance;
+            minIndex = i;
+          }
+        }
+
+        evStationsLocal.forEach((station) => {
+          const marker = new mapboxgl.Marker()
+            .setLngLat(station.position)
+            .setPopup(new mapboxgl.Popup().setText(station.name))
+            .addTo(map.current);
+
+          // Attach click event to the marker
+          marker
+            .getElement()
+            .addEventListener("click", () =>
+              calculateConsumption(userLocation, station.position)
+            );
+
+          directions.current.setDestination(evStationsLocal[minIndex].position);
+        });
+      } else {
+        console.error("Cant fetch data");
+      }
+    } catch (error) {
+      console.error(error);
     }
   }
 
@@ -251,8 +229,8 @@ const MapView = () => {
           {evStations
             ? evStations.map((station) => (
                 <option
-                  key={station.coordinates}
-                  value={JSON.stringify(station.coordinates)}
+                  key={station.position}
+                  value={JSON.stringify(station.position)}
                 >
                   {station.name}
                 </option>
