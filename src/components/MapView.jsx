@@ -124,6 +124,7 @@ const MapView = () => {
     // battery status
     navigator.getBattery().then((battery) => {
       function updateBatteryState() {
+        console.log(battery);
         setBatteryLevel(battery.level * 100);
         if (battery.charging) {
           setChargingTime("Charging...");
@@ -139,13 +140,16 @@ const MapView = () => {
       }
 
       updateBatteryState();
-      console.log(battery);
 
       battery.addEventListener("chargingchange", () => {
         updateBatteryState();
       });
 
       battery.addEventListener("levelchange", () => {
+        updateBatteryState();
+      });
+
+      battery.addEventListener("ondischargingtimechange", () => {
         updateBatteryState();
       });
     });
@@ -162,9 +166,6 @@ const MapView = () => {
     const selectedDestination = destinationSelector.value;
     if (selectedDestination) {
       const destinationCoordinates = JSON.parse(selectedDestination);
-      // console.log(destinationCoordinates)
-      // console.log(selectedDestination[1]);
-      // console.log(new LngLat(selectedDestination));
       directions.current.setDestination(destinationCoordinates);
     }
   }
