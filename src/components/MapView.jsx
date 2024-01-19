@@ -6,6 +6,8 @@ import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css";
 import axios from "axios";
 import getUserLocation from "../lib/getUserLocation";
 import calculateDistance from "../lib/calculateDistance";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN;
 
@@ -21,11 +23,11 @@ const MapView = () => {
   const [chargingTime, setChargingTime] = useState("");
   const [messageElement, setMessageElement] = useState("");
 
-  function emergencyCall() {
+  useEffect(() => {
     try {
       socket.current = new WebSocket(process.env.REACT_APP_BACKEND_API);
 
-      socket.current.addEventListener("open", (event) => {
+      socket.current.addEventListener("open", async (event) => {
         console.log("WebSocket connection opened:", event);
       });
 
@@ -36,9 +38,10 @@ const MapView = () => {
         try {
           const messageData = JSON.parse(event.data);
 
-          setMessageElement(
-            `Message: ${messageData.text}, Location: ${messageData.location}`
-          );
+          // setMessageElement(
+          //   `Message: ${messageData.text}, Location: ${messageData.location}`
+          // );
+          toast.error(`${messageData.text}, Location: ${messageData.location}`);
 
           setTimeout(() => {
             setMessageElement("");
@@ -58,18 +61,18 @@ const MapView = () => {
     } catch (error) {
       console.error(error);
     }
+  });
 
-    const emergencyMessage = "Emergency! Please check the situation.";
-
+  async function emergencyCall(emergencyMessage) {
     // Create an object with text and location
+    const location = await getUserLocation();
     const messageObject = {
       text: emergencyMessage,
-      location: `Lat: ${getUserLocation()[0]}, Lng: ${getUserLocation()[1]}`,
+      location: `Longitude: ${location[0]}, Longitude: ${location[1]}`,
     };
 
     // Send the message object to the server
     socket.current.send(JSON.stringify(messageObject));
-    socket.current.close();
   }
 
   function calculateConsumption(start, destination) {
@@ -118,7 +121,7 @@ const MapView = () => {
     navigator.getBattery().then((battery) => {
       function updateBatteryState() {
         console.log(battery);
-        setBatteryLevel(battery.level * 100);
+        setBatteryLevel(parseInt(battery.level * 100));
         if (battery.charging) {
           setChargingTime("Charging...");
         } else {
@@ -149,9 +152,14 @@ const MapView = () => {
   });
 
   useEffect(() => {
-    if (batteryLevel < 59) {
+    if (batteryLevel < 30) {
+      toast.error("Your battery is below 30");
       geolocate.current.trigger();
       fetchEV();
+    }
+
+    if (batteryLevel < 10) {
+      emergencyCall("Someone's battery died");
     }
   }, [batteryLevel]);
 
@@ -206,6 +214,11 @@ const MapView = () => {
 
           directions.current.setDestination(evStationsLocal[minIndex].position);
         });
+        toast.success(
+          `Routing you to nearest charging station: ${
+            evStationsLocal[minIndex].name
+          }, distance: ${parseInt(minDistance / 1000)}km`
+        );
       } else {
         console.error("Cant fetch data");
       }
@@ -216,9 +229,10 @@ const MapView = () => {
 
   return (
     <main>
+      <ToastContainer />
       <div id="map"></div>
       <div id="batteryStatus">
-        Battery Status: <span id="batteryPercentage">{batteryLevel}</span>
+        Battery Status: <span id="batteryPercentage">{batteryLevel}%</span>
       </div>
       <div id="destinationSelector">
         <label htmlFor="destination">EV Charging Station:</label>
@@ -244,7 +258,9 @@ const MapView = () => {
       </div>
       <div id="charging-time">{chargingTime}</div>
       <button
-        onClick={emergencyCall}
+        onClick={() => {
+          emergencyCall("Emergency! Please check the situation.");
+        }}
         id="emergencyButton"
         className="my-custom-selector"
       >
