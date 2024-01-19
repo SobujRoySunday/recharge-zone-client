@@ -13,6 +13,7 @@ const MapView = () => {
   const [chargeConsumption, setChargeConsumption] = useState(0);
   const [batteryLevel, setBatteryLevel] = useState(30);
   const geolocate = useRef();
+  const directions = useRef();
   const [chargingTime, setChargingTime] = useState("");
 
   function calculateConsumption(start, destination) {
@@ -101,18 +102,18 @@ const MapView = () => {
     });
     map.current.addControl(geolocate.current);
     // Directions Control
-    const directions = new MapboxDirections({
+    directions.current = new MapboxDirections({
       accessToken: mapboxgl.accessToken,
       unit: "metric",
       profile: "mapbox/driving-traffic",
     });
-    map.current.addControl(directions, "top-left");
+    map.current.addControl(directions.current, "top-left");
 
     // on geolocate event handler
     geolocate.current.on("geolocate", (event) => {
       const userLocation = [event.coords.longitude, event.coords.latitude];
       fetchEVStations(userLocation);
-      directions.setOrigin(userLocation);
+      directions.current.setOrigin(userLocation);
     });
 
     // on map load event handler
@@ -156,6 +157,18 @@ const MapView = () => {
     }
   }, [batteryLevel]);
 
+  function handleEvChange() {
+    const destinationSelector = document.getElementById("destination");
+    const selectedDestination = destinationSelector.value;
+    if (selectedDestination) {
+      const destinationCoordinates = JSON.parse(selectedDestination);
+      // console.log(destinationCoordinates)
+      // console.log(selectedDestination[1]);
+      // console.log(new LngLat(selectedDestination));
+      directions.current.setDestination(destinationCoordinates);
+    }
+  }
+
   return (
     <main>
       <div id="map"></div>
@@ -164,13 +177,16 @@ const MapView = () => {
       </div>
       <div id="destinationSelector">
         <label htmlFor="destination">EV Charging Station:</label>
-        <select id="destination" defaultValue="">
+        <select id="destination" defaultValue="" onChange={handleEvChange}>
           <option value="" disabled>
             Select an EV station
           </option>
           {evStations
             ? evStations.map((station) => (
-                <option key={station.coordinates} value={station.coordinates}>
+                <option
+                  key={station.coordinates}
+                  value={JSON.stringify(station.coordinates)}
+                >
                   {station.name}
                 </option>
               ))
