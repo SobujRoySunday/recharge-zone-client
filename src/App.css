@@ -76,3 +76,55 @@ main {
   border: 0;
   border-radius: 10px;
 }
+
+/* add socket */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+}
+
+.card-1 {
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.2);
+  min-width: 20vw;
+  padding: 3rem;
+  border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+.card-1 > * {
+  margin: 0.5rem;
+}
+
+.card-1 > button {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 0;
+  background-color: #d35bff;
+}
+.card-1 > select,
+input {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 0;
+  background-color: #ddd;
+}
+
+.card-1 > p {
+  color: #ef4444;
+}
+
+#destination {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 0;
+  background-color: #ddd;
+  margin-left: 1rem;
+}

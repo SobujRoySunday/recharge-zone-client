@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const CreateEv = () => {
   const [name, setName] = useState("");
@@ -20,8 +22,10 @@ const CreateEv = () => {
         );
         if (response) {
           console.log(`Success: ${response}`);
+          toast.success("Created new EV Station");
         } else {
           console.error("Couldn't create");
+          toast.error("Couldnt create");
         }
       } catch (error) {
         console.error(error);
@@ -30,9 +34,10 @@ const CreateEv = () => {
   }
 
   return (
-    <div>
-      <h1>Create new EV Station</h1>
-      <div>
+    <div className="container">
+      <ToastContainer />
+      <div className="card-1">
+        <h1>Create new EV Station</h1>
         <input
           type="text"
           placeholder="Station Name"
